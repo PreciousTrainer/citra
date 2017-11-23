@@ -3,7 +3,6 @@
 // Refer to the license.txt file included.
 
 #include <condition_variable>
-#include <atomic>
 #include <functional>
 #include <future>
 #include <mutex>
@@ -28,8 +27,8 @@ public:
     }
 
     template <typename F, typename... Args>
-    auto push(F&& f, Args&&... args) {
-        auto ret = workers[next_worker].push(std::forward<F>(f), std::forward<Args>(args)...);
+    auto Push(F&& f, Args&&... args) {
+        auto ret = workers[next_worker].Push(std::forward<F>(f), std::forward<Args>(args)...);
         next_worker = (next_worker + 1) % num_threads;
         return ret;
     }
@@ -52,7 +51,7 @@ private:
             queue_storage.reserve(capacity);
         }
 
-        void push(const T& element) {
+        void Push(const T& element) {
             std::unique_lock<std::mutex> lock(mutex);
             while (queue_storage.size() >= capacity) {
                 queue_changed.wait(lock);
@@ -72,7 +71,7 @@ private:
             return element;
         }
 
-        void push(T&& element) {
+        void Push(T&& element) {
             std::unique_lock<std::mutex> lock(mutex);
             while (queue_storage.size() >= capacity) {
                 queue_changed.wait(lock);
@@ -86,13 +85,13 @@ private:
     private:
         ThreadsafeQueue<std::function<void()>> queue;
         std::thread thread;
-        static constexpr size_t MAX_QUEUE_CAPACITY = 100;
+        static constexpr size_t MAX_QUEUE_CAPACITY = 10;
 
     public:
         Worker() : queue(MAX_QUEUE_CAPACITY), thread([this] { Loop(); }) {}
 
         ~Worker() {
-            queue.push(nullptr); // Exit the loop
+            queue.Push(nullptr); // Exit the loop
             thread.join();
         }
 
@@ -106,10 +105,10 @@ private:
         }
 
         template <typename F, typename... Args>
-        auto push(F&& f, Args&&... args) {
+        auto Push(F&& f, Args&&... args) {
             auto task = std::make_shared<std::packaged_task<decltype(f(args...))()>>(
                 std::bind(std::forward<F>(f), std::forward<Args>(args)...));
-            queue.push([task] { (*task)(); });
+            queue.Push([task] { (*task)(); });
             return task->get_future();
         }
     };

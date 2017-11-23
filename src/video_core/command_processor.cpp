@@ -427,7 +427,7 @@ static void WritePicaReg(u32 id, u32 value, u32 mask) {
         auto& thread_pool = Common::ThreadPool::GetPool();
         std::vector<std::future<void>> futures;
 
-        constexpr unsigned int MIN_VERTICES_PER_THREAD = 10;
+        constexpr unsigned int MIN_VERTICES_PER_THREAD = 15;
         unsigned int vs_threads = regs.pipeline.num_vertices / MIN_VERTICES_PER_THREAD;
         vs_threads = std::min(vs_threads, std::thread::hardware_concurrency() - 1);
 
@@ -436,7 +436,7 @@ static void WritePicaReg(u32 id, u32 value, u32 mask) {
         }
         else {
             for (unsigned int thread_id = 0; thread_id < vs_threads; ++thread_id) {
-                futures.emplace_back(thread_pool.push(VSUnitLoop, thread_id, vs_threads));
+                futures.emplace_back(thread_pool.Push(VSUnitLoop, thread_id, vs_threads));
             }
         }
 
